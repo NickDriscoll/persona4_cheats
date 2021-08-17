@@ -177,8 +177,11 @@ fn main() {
 		OpenProcess(winnt::PROCESS_ALL_ACCESS, 0, proc_struct.th32ProcessID)
 	};
 
+	//Some variables for keeping track of time
 	let mut last_frame_instant = Instant::now();
 	let mut elapsed_time = 0.0;
+
+	//Write the values we want to memory over and over forever
 	loop {
         let delta_time = {
             const MAX_DELTA_TIME: f32 = 1.0 / 30.0;
@@ -236,10 +239,9 @@ fn main() {
 		}
 
 		//XP boost
-		/*
 		{
 			let xp = read_int(process_handle, CHIE_XP_ADDR, 4);
-			if xp != 0 {
+			if saved_xp != 0 {
 				let diff = xp - saved_xp;
 				if diff > 0 && saved_xp != 0 {
 					let new_xp = xp + (5 - 1) * diff;
@@ -252,13 +254,20 @@ fn main() {
 				saved_xp = xp;
 			}
 		}
-		*/
 
 		//SP fuckery
 		{
 			let sp_mid_value = 65205;
+			let max_offset = 500.0;
 			for i in 0..8 {
-				write_int(process_handle, TEAM_BASE_ADDR + SP_OFFSET + i * TEAM_STRIDE, 2, sp_mid_value + (250.0 * f32::sin(elapsed_time * 5.0 * (i+1) as f32) + 250.0) as u32);
+				let frequency = 5.0 * (i + 1) as f32;
+				let offset = (max_offset * f32::sin(elapsed_time * frequency) + max_offset) / 2.0;
+				write_int(
+					process_handle,
+					TEAM_BASE_ADDR + SP_OFFSET + i * TEAM_STRIDE,
+					2,
+					sp_mid_value + offset as u32
+				);
 			}
 		}
 
