@@ -15,6 +15,12 @@ const HEALTH_OFFSET: u32 = 0x08;
 const SP_OFFSET: u32 = 0x0A;
 const TEAM_STRIDE: u32 = 0x84;
 
+const KNOWLEDGE_ADDR: u32 = 0x4DDD068;
+const COURAGE_ADDR: u32 = 0x4DDD06A;
+const DILIGENCE_ADDR: u32 = 0x4DDD06C;
+const UNDERSTANDING_ADDR: u32 = 0x4DDD06E;
+const EXPRESSION_ADDR: u32 = 0x4DDD070;
+
 const CHIE_XP_ADDR: u32 = 0x04DDD198;
 
 const BATTLE_BASE_ADDR: u32 = 0x00AF1680;
@@ -32,7 +38,7 @@ const SMART_BOMB_OFFSET: u32 = 0x2C;
 //Set to 64 to be undetectable
 const DETECTABILITY_FLAG_ADDR: u32 = 0x04DDD6F3;
 
-const MOVEMENT_BASE_ADDR: u32 = 0x21EB49A4;
+const MOVEMENT_BASE_PTR: u32 = 0x21EB49A4;
 const PLAYER_XPOS_OFFSET: u32 = 0x270;
 const PLAYER_YPOS_OFFSET: u32 = 0x274;
 const PLAYER_ZPOS_OFFSET: u32 = 0x278;
@@ -218,7 +224,7 @@ fn main() {
 		//Turbo speed
 		{
 			let scale = 2.5;
-			let base = read_int(process_handle, MOVEMENT_BASE_ADDR, 4);
+			let base = read_int(process_handle, MOVEMENT_BASE_PTR, 4);
 			let offsets = [PLAYER_XPOS_OFFSET, PLAYER_ZPOS_OFFSET];
 			let saved_pos = [&mut saved_xpos, &mut saved_zpos];
 			for i in 0..offsets.len() {
