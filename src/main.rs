@@ -183,18 +183,18 @@ fn main() {
 
 	//Write the values we want to memory over and over forever
 	loop {
-        let delta_time = {
-            const MAX_DELTA_TIME: f32 = 1.0 / 30.0;
+		let delta_time = {
+			const MAX_DELTA_TIME: f32 = 1.0 / 30.0;
 			let frame_instant = Instant::now();
 			let dur = frame_instant.duration_since(last_frame_instant);
 			last_frame_instant = frame_instant;
 			let f_dur = dur.as_secs_f32();
 
-            //Don't allow game objects to have an update delta of more than a thirtieth of a second
-            if f_dur > MAX_DELTA_TIME { MAX_DELTA_TIME }
-            else { f_dur }
-        };
-        elapsed_time += delta_time;
+			//Don't allow game objects to have an update delta of more than a thirtieth of a second
+			if f_dur > MAX_DELTA_TIME { MAX_DELTA_TIME }
+			else { f_dur }
+		};
+		elapsed_time += delta_time;
 
 		//Finding the pointer to the first enemy
 		let first_enemy_base_addr = {
