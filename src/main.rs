@@ -23,18 +23,18 @@ const UNDERSTANDING_ADDR: u32 = 0x4DDD06E;
 const EXPRESSION_ADDR: u32 = 0x4DDD070;
 
 //Social link counters
+//When a counter crosses a certain threshold, you can advance your relationship with that social link
+//If you do so, the counter resets to zero
 const YOSUKE_SOCIAL_LINK: u32 = 0x04DDDCB4;
-//const YOSUKE_SOCIAL_LINK: u32 = 0x04DDDCC4;
 const CHIE_SOCIAL_LINK: u32 = 0x04DDDCD4;
 const SPORTS_SOCIAL_LINK: u32 = 0x04DDDCE4;		// Daisuke/Kou
 const ARTS_SOCIAL_LINK: u32 = 0x04DDDCF4;		// Yumi/annoying band girl
 const NANAKO_SOCIAL_LINK: u32 = 0x04DDDD04;
-//const YOSUKE_SOCIAL_LINK: u32 = 0x04DDDD14;
 const YUKIKO_SOCIAL_LINK: u32 = 0x04DDDD24;
 const ADACHI_SOCIAL_LINK: u32 = 0x04DDDD34;
 const DOJIMA_SOCIAL_LINK: u32 = 0x04DDDD44;
-//const ADACHI_SOCIAL_LINK: u32 = 0x04DDDD54;
 const SHU_SOCIAL_LINK: u32 = 0x04DDDD64;
+const SAYOKO_SOCIAL_LINK: u32 = 0x04DDDD64;
 
 const CHIE_XP_ADDR: u32 = 0x04DDD198;
 
@@ -46,6 +46,9 @@ const ENEMY_STRIDE: u32 = 0x34;
 
 const ITEMS_BASE_ADDR: u32 = 0x04DDC6F2;
 const SOMA_OFFSET: u32 = 0x16;
+const PHYSICAL_MIRROR_OFFSET: u32 = 0x1D;
+const MAGIC_MIRROR_OFFSET: u32 = 0x1E;
+const SUPER_SHIELD_OFFSET: u32 = 0x21;
 const SMART_BOMB_OFFSET: u32 = 0x2C;
 
 const ITEM_STRINGS_BASE_ADDR: u32 = 0x00DAFD08;
@@ -244,6 +247,9 @@ fn main() {
 
 		//Write item amounts
 		write_int(process_handle, ITEMS_BASE_ADDR + SOMA_OFFSET, 1, 69);
+		write_int(process_handle, ITEMS_BASE_ADDR + PHYSICAL_MIRROR_OFFSET, 1, 69);
+		write_int(process_handle, ITEMS_BASE_ADDR + MAGIC_MIRROR_OFFSET, 1, 69);
+		write_int(process_handle, ITEMS_BASE_ADDR + SUPER_SHIELD_OFFSET, 1, 69);
 		write_int(process_handle, ITEMS_BASE_ADDR + SMART_BOMB_OFFSET, 1, 69);
 
 		//Write undetectability
@@ -308,16 +314,13 @@ fn main() {
 		}
 
 		//Display all item strings once
-		/*
-		if (!displayed_strings) {
-			print!("[");
+		if (!displayed_strings && false) {
 			for i in 0..0xA00 {
 				let item_name_bytes = read_string_bytes(process_handle, ITEM_STRINGS_BASE_ADDR + i * ITEM_STRINGS_STRIDE, ITEM_STRINGS_STRIDE);
 				match String::from_utf8(item_name_bytes) {
 					Ok(st) => {
 						if st.chars().nth(0).unwrap() != '0' && st != "Blank" {
-							print!("0x{:X}, ", i);
-							//write_int(process_handle, ITEMS_BASE_ADDR + i, 1, 69);
+							println!("0x{:X} : {}, ", i, st);
 						}
 					}
 					Err(e) => {
@@ -325,11 +328,9 @@ fn main() {
 					}
 				}
 			}
-			println!("]");
 
 			displayed_strings = true;
 		}
-		*/
 
 		//sleep to avoid throttling the CPU
 		sleep(Duration::from_millis(5));
