@@ -15,11 +15,26 @@ const HEALTH_OFFSET: u32 = 0x08;
 const SP_OFFSET: u32 = 0x0A;
 const TEAM_STRIDE: u32 = 0x84;
 
+//u16
 const KNOWLEDGE_ADDR: u32 = 0x4DDD068;
 const COURAGE_ADDR: u32 = 0x4DDD06A;
 const DILIGENCE_ADDR: u32 = 0x4DDD06C;
 const UNDERSTANDING_ADDR: u32 = 0x4DDD06E;
 const EXPRESSION_ADDR: u32 = 0x4DDD070;
+
+//Social link counters
+const YOSUKE_SOCIAL_LINK: u32 = 0x04DDDCB4;
+//const YOSUKE_SOCIAL_LINK: u32 = 0x04DDDCC4;
+const CHIE_SOCIAL_LINK: u32 = 0x04DDDCD4;
+const SPORTS_SOCIAL_LINK: u32 = 0x04DDDCE4;		// Daisuke/Kou
+const ARTS_SOCIAL_LINK: u32 = 0x04DDDCF4;		// Yumi/annoying band girl
+const NANAKO_SOCIAL_LINK: u32 = 0x04DDDD04;
+const YOSUKE_SOCIAL_LINK: u32 = 0x04DDDD14;
+const YUKIKO_SOCIAL_LINK: u32 = 0x04DDDD24;
+const ADACHI_SOCIAL_LINK: u32 = 0x04DDDD34;
+const DOJIMA_SOCIAL_LINK: u32 = 0x04DDDD44;
+//const ADACHI_SOCIAL_LINK: u32 = 0x04DDDD54;
+const SHU_SOCIAL_LINK: u32 = 0x04DDDD64;
 
 const CHIE_XP_ADDR: u32 = 0x04DDD198;
 
@@ -30,19 +45,23 @@ const ENEMY_SP_OFFSET: u32 = 0x16;
 const ENEMY_STRIDE: u32 = 0x34;
 
 const ITEMS_BASE_ADDR: u32 = 0x04DDC6F2;
-const ITEM_STRINGS_BASE_ADDR: u32 = 0x00DAFD08;
-const ITEM_STRINGS_STRIDE: u32 = 0x18;
 const SOMA_OFFSET: u32 = 0x16;
 const SMART_BOMB_OFFSET: u32 = 0x2C;
 
-//Set to 64 to be undetectable
+const ITEM_STRINGS_BASE_ADDR: u32 = 0x00DAFD08;
+const ITEM_STRINGS_STRIDE: u32 = 0x18;
+
+//Set to 01000000 to be undetectable
+//I'm assuming this is a bitmask but I've never seen it take a value other than 0 or 01000000 so eh
 const DETECTABILITY_FLAG_ADDR: u32 = 0x04DDD6F3;
+const INVISIBLE_TO_SHADOWS: u32 = 0b01000000;
 
 const MOVEMENT_BASE_PTR: u32 = 0x21EB49A4;
 const PLAYER_XPOS_OFFSET: u32 = 0x270;
 const PLAYER_YPOS_OFFSET: u32 = 0x274;
 const PLAYER_ZPOS_OFFSET: u32 = 0x278;
 
+//The process name we search for
 const EXE_NAME: &str = "P4G.exe";
 
 fn clear_buffer(array: &mut [winnt::CHAR]) {
@@ -60,7 +79,7 @@ fn get_exe_name(proc_struct: &tlhelp32::PROCESSENTRY32) -> String {
 	st.trim_matches(char::from(0)).to_string()
 }
 
-fn read_float(process_handle: winnt::HANDLE, address: u32) -> f32 {
+fn read_f32(process_handle: winnt::HANDLE, address: u32) -> f32 {
 	let mut bytes_touched = 0;
 	let mut buffer = [0; 4];
 	unsafe {
@@ -147,7 +166,7 @@ fn main() {
 	let mut saved_zpos = 0.0;
 	let mut saved_xp = 0;
 
-	//First thing is attach to the Persona 4 process
+	//First thing is to open the Persona 4 process
 	println!("Searching for {}...", EXE_NAME);
 	let process_handle = unsafe {
 		let mut proc_struct = tlhelp32::PROCESSENTRY32 { 
@@ -180,6 +199,7 @@ fn main() {
 			}
 		}
 
+		//Open the process with read/write access
 		OpenProcess(winnt::PROCESS_ALL_ACCESS, 0, proc_struct.th32ProcessID)
 	};
 
@@ -209,9 +229,17 @@ fn main() {
 		};
 
 		//Make all enemies have 1hp and 0sp
-		for i in 0..6 {
-			write_int(process_handle, first_enemy_base_addr + ENEMY_HEALTH_OFFSET + i * ENEMY_STRIDE, 2, 1);
-			write_int(process_handle, first_enemy_base_addr + ENEMY_SP_OFFSET + i * ENEMY_STRIDE, 2, 0);
+		if first_enemy_base_addr != 0x0 {
+			for i in 0..6 {
+				write_int(process_handle, first_enemy_base_addr + ENEMY_HEALTH_OFFSET + i * ENEMY_STRIDE, 2, 1);
+				write_int(process_handle, first_enemy_base_addr + ENEMY_SP_OFFSET + i * ENEMY_STRIDE, 2, 0);
+			}
+		}
+
+		//Write max social stats
+		//Addrs start at knowledge and are tightly-packed u16s
+		for i in 0..5 {
+			write_int(process_handle, KNOWLEDGE_ADDR + i * 0x02, 2, 500);
 		}
 
 		//Write item amounts
@@ -219,16 +247,17 @@ fn main() {
 		write_int(process_handle, ITEMS_BASE_ADDR + SMART_BOMB_OFFSET, 1, 69);
 
 		//Write undetectability
-		write_int(process_handle, DETECTABILITY_FLAG_ADDR, 1, 64);
+		write_int(process_handle, DETECTABILITY_FLAG_ADDR, 1, INVISIBLE_TO_SHADOWS);
 
 		//Turbo speed
 		{
 			let scale = 2.5;
 			let base = read_int(process_handle, MOVEMENT_BASE_PTR, 4);
+
 			let offsets = [PLAYER_XPOS_OFFSET, PLAYER_ZPOS_OFFSET];
 			let saved_pos = [&mut saved_xpos, &mut saved_zpos];
 			for i in 0..offsets.len() {
-				let pos = read_float(process_handle, base + offsets[i]);
+				let pos = read_f32(process_handle, base + offsets[i]);
 				if *saved_pos[i] != 0.0 {
 					let diff = f32::abs(pos - *saved_pos[i]);
 					if diff > 0.00001 && diff < 100.0 {
@@ -246,11 +275,12 @@ fn main() {
 
 		//XP boost
 		{
+			let multiplier = 5;
 			let xp = read_int(process_handle, CHIE_XP_ADDR, 4);
 			if saved_xp != 0 {
 				let diff = xp - saved_xp;
-				if diff > 0 && saved_xp != 0 {
-					let new_xp = xp + (5 - 1) * diff;
+				if diff > 0 {
+					let new_xp = xp + (multiplier - 1) * diff;
 					write_int(process_handle, CHIE_XP_ADDR, 4, new_xp);
 					saved_xp = new_xp;
 				} else {
@@ -264,7 +294,7 @@ fn main() {
 		//SP fuckery
 		{
 			let sp_mid_value = 65205;
-			let max_offset = 500.0;
+			let max_offset = 600.0;
 			for i in 0..8 {
 				let frequency = 5.0 * (i + 1) as f32;
 				let offset = (max_offset * f32::sin(elapsed_time * frequency) + max_offset) / 2.0;
