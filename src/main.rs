@@ -25,6 +25,7 @@ const EXPRESSION_ADDR: u32 = 0x4DDD070;
 //Social link counters
 //When a counter crosses a certain threshold, you can advance your relationship with that social link
 //If you do so, the counter resets to zero
+const SOCIAL_LINK_STRIDE: u32 = 0x10;
 const YOSUKE_SOCIAL_LINK: u32 = 0x04DDDCB4;
 const CHIE_SOCIAL_LINK: u32 = 0x04DDDCD4;
 const SPORTS_SOCIAL_LINK: u32 = 0x04DDDCE4;		// Daisuke/Kou
@@ -34,7 +35,10 @@ const YUKIKO_SOCIAL_LINK: u32 = 0x04DDDD24;
 const ADACHI_SOCIAL_LINK: u32 = 0x04DDDD34;
 const DOJIMA_SOCIAL_LINK: u32 = 0x04DDDD44;
 const SHU_SOCIAL_LINK: u32 = 0x04DDDD64;
-const SAYOKO_SOCIAL_LINK: u32 = 0x04DDDD64;
+const SAYOKO_SOCIAL_LINK: u32 = 0x04DDDD74;
+const RISE_SOCIAL_LINK: u32 = 0x04DDDDC4;
+const AI_SOCIAL_LINK: u32 = 0x04DDDDD4;
+const SOCIAL_LINK_COUNT: u32 = (AI_SOCIAL_LINK - YOSUKE_SOCIAL_LINK) / SOCIAL_LINK_STRIDE + 1;
 
 const CHIE_XP_ADDR: u32 = 0x04DDD198;
 
@@ -243,6 +247,11 @@ fn main() {
 		//Addrs start at knowledge and are tightly-packed u16s
 		for i in 0..5 {
 			write_int(process_handle, KNOWLEDGE_ADDR + i * 0x02, 2, 500);
+		}
+
+		//Write social links
+		for i in 0..SOCIAL_LINK_COUNT {
+			write_int(process_handle, YOSUKE_SOCIAL_LINK + i * SOCIAL_LINK_STRIDE, 2, 600);
 		}
 
 		//Write item amounts
