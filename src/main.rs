@@ -1,6 +1,6 @@
-use std::env;
+#![allow(dead_code)]
+
 use std::mem::size_of;
-use std::process::exit;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 use winapi::um::tlhelp32;
@@ -25,7 +25,6 @@ const EXPRESSION_ADDR: u32 = 0x4DDD070;
 //Social link counters
 //When a counter crosses a certain threshold, you can advance your relationship with that social link
 //If you do so, the counter resets to zero
-const SOCIAL_LINK_STRIDE: u32 = 0x10;
 const YOSUKE_SOCIAL_LINK: u32 = 0x04DDDCB4;
 const CHIE_SOCIAL_LINK: u32 = 0x04DDDCD4;
 const SPORTS_SOCIAL_LINK: u32 = 0x04DDDCE4;		// Daisuke/Kou
@@ -38,7 +37,10 @@ const SHU_SOCIAL_LINK: u32 = 0x04DDDD64;
 const SAYOKO_SOCIAL_LINK: u32 = 0x04DDDD74;
 const RISE_SOCIAL_LINK: u32 = 0x04DDDDC4;
 const AI_SOCIAL_LINK: u32 = 0x04DDDDD4;
-const SOCIAL_LINK_COUNT: u32 = (AI_SOCIAL_LINK - YOSUKE_SOCIAL_LINK) / SOCIAL_LINK_STRIDE + 1;
+const MARIE_SOCIAL_LINK: u32 = 0x04DDDDE4;
+
+const SOCIAL_LINK_STRIDE: u32 = 0x10;
+const SOCIAL_LINK_COUNT: u32 = (MARIE_SOCIAL_LINK - YOSUKE_SOCIAL_LINK) / SOCIAL_LINK_STRIDE + 1;
 
 const CHIE_XP_ADDR: u32 = 0x04DDD198;
 
@@ -169,13 +171,14 @@ fn main() {
 	let mut displayed_strings = false;
 
 	let mut saved_xpos = 0.0;
-	let mut saved_ypos = 0.0;
+	//let mut saved_ypos = 0.0;
 	let mut saved_zpos = 0.0;
 	let mut saved_xp = 0;
 
 	//First thing is to open the Persona 4 process
 	println!("Searching for {}...", EXE_NAME);
 	let process_handle = unsafe {
+		//Initialize PROCESSENTRY32 struct
 		let mut proc_struct = tlhelp32::PROCESSENTRY32 { 
 			dwSize: size_of::<tlhelp32::PROCESSENTRY32>() as u32, //This is so fucking dumb, Microsoft
 			cntUsage: 0,
@@ -195,6 +198,8 @@ fn main() {
 			let snap_handle = tlhelp32::CreateToolhelp32Snapshot(tlhelp32::TH32CS_SNAPPROCESS, 0);
 			tlhelp32::Process32First(snap_handle, &mut proc_struct);
 			clear_buffer(&mut proc_struct.szExeFile);
+
+			//Filling 
 			while tlhelp32::Process32Next(snap_handle, &mut proc_struct) != 0 {
 				if get_exe_name(&proc_struct).eq_ignore_ascii_case(EXE_NAME) {
 					println!("{}'s process ID is {}", EXE_NAME, proc_struct.th32ProcessID);
@@ -213,12 +218,14 @@ fn main() {
 	//Some variables for keeping track of time
 	let mut last_frame_instant = Instant::now();
 	let mut elapsed_time = 0.0;
+	const TICK_RATE: u64 = 5; //In milliseconds
 
 	//Write the values we want to memory over and over forever
 	loop {
+		let frame_instant;
 		let delta_time = {
 			const MAX_DELTA_TIME: f32 = 1.0 / 30.0;
-			let frame_instant = Instant::now();
+			frame_instant = Instant::now();
 			let dur = frame_instant.duration_since(last_frame_instant);
 			last_frame_instant = frame_instant;
 			let f_dur = dur.as_secs_f32();
@@ -255,18 +262,19 @@ fn main() {
 		}
 
 		//Write item amounts
-		write_int(process_handle, ITEMS_BASE_ADDR + SOMA_OFFSET, 1, 69);
-		write_int(process_handle, ITEMS_BASE_ADDR + PHYSICAL_MIRROR_OFFSET, 1, 69);
-		write_int(process_handle, ITEMS_BASE_ADDR + MAGIC_MIRROR_OFFSET, 1, 69);
-		write_int(process_handle, ITEMS_BASE_ADDR + SUPER_SHIELD_OFFSET, 1, 69);
-		write_int(process_handle, ITEMS_BASE_ADDR + SMART_BOMB_OFFSET, 1, 69);
+		{
+			const OFFSETS: [u32; 5] = [SOMA_OFFSET, PHYSICAL_MIRROR_OFFSET, MAGIC_MIRROR_OFFSET, SUPER_SHIELD_OFFSET, SMART_BOMB_OFFSET];
+			for offset in OFFSETS {
+				write_int(process_handle, ITEMS_BASE_ADDR + offset, 1, 69);
+			}
+		}
 
 		//Write undetectability
 		write_int(process_handle, DETECTABILITY_FLAG_ADDR, 1, INVISIBLE_TO_SHADOWS);
 
 		//Turbo speed
 		{
-			let scale = 2.5;
+			let scale = 2.0;
 			let base = read_int(process_handle, MOVEMENT_BASE_PTR, 4);
 
 			let offsets = [PLAYER_XPOS_OFFSET, PLAYER_ZPOS_OFFSET];
@@ -323,7 +331,7 @@ fn main() {
 		}
 
 		//Display all item strings once
-		if (!displayed_strings && false) {
+		if !displayed_strings && false {
 			for i in 0..0xA00 {
 				let item_name_bytes = read_string_bytes(process_handle, ITEM_STRINGS_BASE_ADDR + i * ITEM_STRINGS_STRIDE, ITEM_STRINGS_STRIDE);
 				match String::from_utf8(item_name_bytes) {
@@ -342,6 +350,9 @@ fn main() {
 		}
 
 		//sleep to avoid throttling the CPU
-		sleep(Duration::from_millis(5));
+		let sleep_dur = TICK_RATE - Instant::now().duration_since(frame_instant).as_millis() as u64;
+		if sleep_dur > 0 {
+			sleep(Duration::from_millis(sleep_dur));
+		}
 	}
 }
